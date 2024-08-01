@@ -1,6 +1,12 @@
 #include "key.h"
 #include "delay.h"
 
+//void key_it_init()
+//{
+//     KEY1_CKL_EN();      /* 使能时钟 */
+//    KEY2_CKL_EN();
+//    KEY_UP_CKL_EN();
+//}
 void key_init(void)
 {
     KEY1_CKL_EN();      /* 使能时钟 */
