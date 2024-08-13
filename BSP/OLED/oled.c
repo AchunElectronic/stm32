@@ -1,27 +1,3 @@
-/**
- ****************************************************************************************************
- * @file        oled.c
- * @author      正点原子团队(ALIENTEK)
- * @version     V1.0
- * @date        2020-04-22
- * @brief       OLED 驱动代码
- * @license     Copyright (c) 2020-2032, 广州市星翼电子科技有限公司
- ****************************************************************************************************
- * @attention
- *
- * 实验平台:正点原子 STM32F103开发板
- * 在线视频:www.yuanzige.com
- * 技术论坛:www.openedv.com
- * 公司网址:www.alientek.com
- * 购买地址:openedv.taobao.com
- *
- * 修改说明
- * V1.0 20200421
- * 第一次发布
- *
- ****************************************************************************************************
- */
-
 #include "stdlib.h"
 #include "./BSP/OLED/oled.h"
 #include "./BSP/OLED/oledfont.h"
@@ -67,8 +43,79 @@ void oled_refresh_gram(void)
         }
     }
 }
+#if OLED_MODE   == 2
 
-#if OLED_MODE == 1    /* 使用8080并口驱动OLED */
+void oled_i2c_start(void)
+{
+    OLED_SCL_SET();
+    OLED_SDA_SET();
+    OLED_SDA_RESET();
+    OLED_SCL_RESET();
+}
+
+void oled_i2c_stop(void)
+{
+    OLED_SCL_SET();
+    OLED_SDA_RESET();
+    OLED_SDA_SET();
+}
+
+void oled_i2c_ack(void)
+{
+    OLED_SCL_SET();
+    OLED_SCL_RESET();
+}
+
+void oled_i2c_write_byte(uint8_t data)
+{
+    uint8_t i, tmp;
+    tmp = data;
+    
+    for(i = 0; i < 8; i++)
+    {
+        if((tmp & 0x80) == 0x80)
+            OLED_SDA_SET();
+        else
+            OLED_SDA_RESET();
+        tmp = tmp << 1;
+        OLED_SCL_SET();
+        OLED_SCL_RESET();
+    }
+}
+
+static void oled_wr_byte(uint8_t data, uint8_t cmd)
+{
+    switch( cmd )
+    {
+        case OLED_CMD:
+        {
+            oled_i2c_start();
+            oled_i2c_write_byte(0x78);
+            oled_i2c_ack();
+            oled_i2c_write_byte(0x00);
+            oled_i2c_ack();
+            oled_i2c_write_byte(data);
+            oled_i2c_ack();
+            oled_i2c_stop();
+            break;
+        }
+        case OLED_DATA :
+        {
+            oled_i2c_start();
+            oled_i2c_write_byte(0x78);
+            oled_i2c_ack();
+            oled_i2c_write_byte(0x40);
+            oled_i2c_ack();
+            oled_i2c_write_byte(data);
+            oled_i2c_ack();
+            oled_i2c_stop();
+            break;
+        }
+    }
+
+}
+
+#elif OLED_MODE == 1    /* 使用8080并口驱动OLED */
 
 /**
  * @brief       通过拼凑的方法向OLED输出一个8位数据
@@ -97,7 +144,7 @@ static void oled_wr_byte(uint8_t data, uint8_t cmd)
     OLED_RS(1);
 }
 
-#else   /* 使用SPI驱动OLED */
+#elif OLED_MODE ==0   /* 使用SPI驱动OLED */
 
 /**
  * @brief       向OLED写入一个字节
@@ -322,7 +369,6 @@ void oled_show_num(uint8_t x, uint8_t y, uint32_t num, uint8_t len, uint8_t size
                 enshow = 1;     /* 使能显示 */
             }
         }
-
         oled_show_char(x + (size / 2)*t, y, temp + '0', size, 1);    /* 显示字符 */
     }
 }
@@ -357,6 +403,38 @@ void oled_show_string(uint8_t x, uint8_t y, const char *p, uint8_t size)
 }
 
 /**
+ * @brief       显示图片
+ * @param       x,y : 起始坐标
+ * @param       width: 图片宽度
+ * @param       height:图片高度 
+ * @param       *bmp  : 字符串指针,指向字符串首地址
+ * @retval      无
+ */
+void oled_show_image(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t *bmp)
+{
+    uint8_t i, j;
+    for(j = 0; j < height; j++)
+    {
+        for(i = 0; i < width; i++)
+            g_oled_gram[i][j] = bmp[width * j + i];
+    }
+}
+/**
+ * @brief       显示logo
+ * @param       无
+ * @retval      无
+ * @note        逐列取模方式
+ */
+void oled_show_logo(void)
+{
+    uint8_t i, j;
+    for(j = 0; j < 128; j++)//achun[128][8]
+    {
+        for(i = 0; i < 8; i++)
+            g_oled_gram[j][i] = logo[j][i];
+    }
+}
+/**
  * @brief       初始化OLED(SSD1306)
  * @param       无
  * @retval      无
@@ -367,8 +445,20 @@ void oled_init(void)
     __HAL_RCC_GPIOC_CLK_ENABLE();     /* 使能PORTC时钟 */
     __HAL_RCC_GPIOD_CLK_ENABLE();     /* 使能PORTD时钟 */
     __HAL_RCC_GPIOG_CLK_ENABLE();     /* 使能PORTG时钟 */
+#if OLED_MODE==2
 
-#if OLED_MODE==1    /* 使用8080并口模式 */
+    OLED_I2C_SCL_CLK();
+    OLED_I2C_SDA_CLK();
+    
+    gpio_init_struct.Pin = OLED_I2C_SCL_PIN;          
+    gpio_init_struct.Mode = GPIO_MODE_OUTPUT_PP;             
+    gpio_init_struct.Pull = GPIO_PULLUP;                     
+    gpio_init_struct.Speed = GPIO_SPEED_FREQ_HIGH;           
+    HAL_GPIO_Init(OLED_I2C_SCL_PORT, &gpio_init_struct);
+    
+    gpio_init_struct.Pin = OLED_I2C_SDA_PIN;          
+    HAL_GPIO_Init(OLED_I2C_SDA_PORT, &gpio_init_struct);
+#elif OLED_MODE==1    /* 使用8080并口模式 */
 
     /* PC0 ~ 7 设置 */
     gpio_init_struct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_4|GPIO_PIN_5|GPIO_PIN_6|GPIO_PIN_7;                
@@ -454,43 +544,15 @@ void oled_init(void)
     oled_wr_byte(0x12, OLED_CMD);   /* [5:4]配置 */
 
     oled_wr_byte(0x81, OLED_CMD);   /* 对比度设置 */
-    oled_wr_byte(0xEF, OLED_CMD);   /* 1~255;默认0X7F (亮度设置,越大越亮) */
+    oled_wr_byte(brightness, OLED_CMD);   /* 1~255;默认0X7F (亮度设置,越大越亮) */
     oled_wr_byte(0xD9, OLED_CMD);   /* 设置预充电周期 */
     oled_wr_byte(0xf1, OLED_CMD);   /* [3:0],PHASE 1;[7:4],PHASE 2; */
     oled_wr_byte(0xDB, OLED_CMD);   /* 设置VCOMH 电压倍率 */
     oled_wr_byte(0x30, OLED_CMD);   /* [6:4] 000,0.65*vcc;001,0.77*vcc;011,0.83*vcc; */
 
     oled_wr_byte(0xA4, OLED_CMD);   /* 全局显示开启;bit0:1,开启;0,关闭;(白屏/黑屏) */
-    oled_wr_byte(0xA6, OLED_CMD);   /* 设置显示方式;bit0:1,反相显示;0,正常显示 */
+    oled_wr_byte(0xA6+opposition, OLED_CMD);   /* 设置显示方式;bit0:1,反相显示;0,正常显示 */
     oled_wr_byte(0xAF, OLED_CMD);   /* 开启显示 */
+    
     oled_clear();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

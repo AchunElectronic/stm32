@@ -1,41 +1,35 @@
-/**
- ****************************************************************************************************
- * @file        oled.h
- * @author      正点原子团队(ALIENTEK)
- * @version     V1.0
- * @date        2020-04-21
- * @brief       OLED 驱动代码
- * @license     Copyright (c) 2020-2032, 广州市星翼电子科技有限公司
- ****************************************************************************************************
- * @attention
- *
- * 实验平台:正点原子 STM32F103开发板
- * 在线视频:www.yuanzige.com
- * 技术论坛:www.openedv.com
- * 公司网址:www.alientek.com
- * 购买地址:openedv.taobao.com
- *
- * 修改说明
- * V1.0 20200421
- * 第一次发布
- *
- ****************************************************************************************************
- */
- 
-#ifndef __OLED_H
-#define __OLED_H
+#ifndef __OLED_H__
+#define __OLED_H__
 
 #include "stdlib.h" 
 #include "./SYSTEM/sys/sys.h"
 
+#define brightness 0x7f /* 设置亮度 1-0xff 亮度为0时黑屏 */
+#define opposition 0    /* 0:不反相  1：反相 */
 
 /* OLED模式设置
  * 0: 4线串行模式  （模块的BS1，BS2均接GND）
  * 1: 并行8080模式 （模块的BS1，BS2均接VCC）
  */
-#define OLED_MODE       1   /* 默认使用8080并口模式 */
+#define OLED_MODE       2   /* 2：I2C模式  1：080并口模式  0：SPI模式 */
 
 /******************************************************************************************/
+/* OLED I2C模式引脚 定义 */
+/* 注意:这里仅定义了 OLED 2线I2C模式驱动的引脚 采用软件模拟I2C，任意选择两个引脚即可驱动OLED */
+#define OLED_I2C_SCL_CLK()      __HAL_RCC_GPIOB_CLK_ENABLE();
+#define OLED_I2C_SCL_PORT       GPIOB
+#define OLED_I2C_SCL_PIN        GPIO_PIN_6
+
+#define OLED_I2C_SDA_CLK()      __HAL_RCC_GPIOB_CLK_ENABLE();
+#define OLED_I2C_SDA_PORT       GPIOB
+#define OLED_I2C_SDA_PIN        GPIO_PIN_7
+
+#define OLED_SCL_RESET()        HAL_GPIO_WritePin(OLED_I2C_SCL_PORT, OLED_I2C_SCL_PIN, GPIO_PIN_RESET)
+#define OLED_SCL_SET()          HAL_GPIO_WritePin(OLED_I2C_SCL_PORT, OLED_I2C_SCL_PIN, GPIO_PIN_SET)
+
+#define OLED_SDA_RESET()        HAL_GPIO_WritePin(OLED_I2C_SDA_PORT, OLED_I2C_SDA_PIN, GPIO_PIN_RESET)
+#define OLED_SDA_SET()          HAL_GPIO_WritePin(OLED_I2C_SDA_PORT, OLED_I2C_SDA_PIN, GPIO_PIN_SET)
+
 /* OLED SPI模式引脚 定义 */
 /* 注意:这里仅定义了 OLED 4线SPI模式驱动时的 引脚定义. 8位并口访问, 由于引脚太多,就不单独定义了. */
 
@@ -114,10 +108,12 @@ void oled_display_on(void);     /* 开启OLED显示 */
 void oled_display_off(void);    /* 关闭OLED显示 */
 void oled_refresh_gram(void);   /* 更新显存到OLED */ 
 void oled_draw_point(uint8_t x, uint8_t y, uint8_t dot);    /* OLED画点 */
-void oled_fill(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t dot);        /* OLED区域填充 */
-void oled_show_char(uint8_t x, uint8_t y, uint8_t chr, uint8_t size, uint8_t mode); /* OLED显示字符 */
-void oled_show_num(uint8_t x, uint8_t y, uint32_t num, uint8_t len, uint8_t size);  /* OLED显示数字 */
-void oled_show_string(uint8_t x, uint8_t y, const char *p, uint8_t size);           /* OLED显示字符串 */
+void oled_fill(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, uint8_t dot);                /* OLED区域填充 */
+void oled_show_char(uint8_t x, uint8_t y, uint8_t chr, uint8_t size, uint8_t mode);         /* OLED显示字符 */
+void oled_show_num(uint8_t x, uint8_t y, uint32_t num, uint8_t len, uint8_t size);          /* OLED显示数字 */
+void oled_show_string(uint8_t x, uint8_t y, const char *p, uint8_t size);                   /*OLED显示字符串*/
+void oled_show_image(uint8_t x, uint8_t y, uint8_t width, uint8_t height, uint8_t *bmp);     /* OLED显示图片 */
+void oled_show_logo(void);                                                                  /* 显示logo */
 
 #endif
 
