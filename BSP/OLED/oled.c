@@ -22,25 +22,70 @@
  */
 static uint8_t g_oled_gram[128][8];
 
+void oled_test(void)
+{
+    uint8_t temp;
+    for(uint8_t i = 0;i < 128;i++)
+    {
+        for(uint8_t j = 0;j < 4;j++)
+        {
+            temp =g_oled_gram[i][j];
+            
+            g_oled_gram[i][j] = g_oled_gram[127-i][7-j];
+            g_oled_gram[127-i][7-j] = temp;
+        }
+    }
+    for(uint8_t i = 0;i < 128;i++)
+    {
+        for(uint8_t j = 0;j < 8;j++)
+        {
+            temp = 0;
+            for(uint8_t k = 0;k < 8;k++)
+            {
+                
+                if(g_oled_gram[i][j] &(0x01<<k))
+                    temp |= 0x80>>k;
+            }
+            g_oled_gram[i][j] = temp;
+        }
+    }
+}
 /**
  * @brief       更新显存到OLED
  * @param       无
  * @retval      无
+ * @note 
  */
 void oled_refresh_gram(void)
 {
     uint8_t i, n;
-
     for (i = 0; i < 8; i++)
     {
-        oled_wr_byte (0xb0 + i, OLED_CMD); /* 设置页地址（0~7） */
+#if reverse_direction == 1  /* 页地址反向 */
+        oled_wr_byte (0xb0 + 7 - i, OLED_CMD);  /* 设置页地址（0~7） */
+#else
+        oled_wr_byte (0xb0 + i, OLED_CMD);      /* 设置页地址（0~7） */
+#endif
         oled_wr_byte (0x00, OLED_CMD);     /* 设置显示位置—列低地址 */
         oled_wr_byte (0x10, OLED_CMD);     /* 设置显示位置—列高地址 */
-
+#if reverse_direction == 1
+        for (n = 0; n < 128; n++)
+        {
+            uint8_t temp = 0;
+            for(uint8_t k = 0;k < 8;k++)
+            {
+                if(g_oled_gram[127-n][i] &(0x01<<k)) /* [127-n][i]：水平地址反向 */
+                    temp |= 0x80>>k;    /* 8位数据高低位交换 */
+            }
+            oled_wr_byte(temp , OLED_DATA);
+        }
+#else
         for (n = 0; n < 128; n++)
         {
             oled_wr_byte(g_oled_gram[n][i], OLED_DATA);
         }
+
+#endif
     }
 }
 #if OLED_MODE   == 2

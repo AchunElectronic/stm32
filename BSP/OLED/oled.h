@@ -4,17 +4,18 @@
 #include "stdlib.h" 
 #include "./SYSTEM/sys/sys.h"
 
-#define brightness 0x7f /* 设置亮度 1-0xff 亮度为0时黑屏 */
-#define opposition 0    /* 0:不反相  1：反相 */
+/*  */
+#define brightness 0x7f     /* 设置亮度 1-0xff 亮度为0时黑屏 */
+#define opposition 0        /* 0:不反相  1：反相  注：反相是指黑白相反*/
+#define reverse_direction 1 /* 0：不反向 1：反向 I2C反向后FPS26->25*/
 
-/* OLED模式设置
- * 0: 4线串行模式  （模块的BS1，BS2均接GND）
- * 1: 并行8080模式 （模块的BS1，BS2均接VCC）
- */
-#define OLED_MODE       2   /* 2：I2C模式  1：080并口模式  0：SPI模式 */
+/* OLED模式设置 */
+#define OLED_MODE       2   /* 2：2线I2C模式  1：并行8080并口模式  0：4线串行SPI模式 */
 
 /******************************************************************************************/
 /* OLED I2C模式引脚 定义 */
+/*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*/
+/* 建议使用前先用I2C测试一下能否正常使用 */
 /* 注意:这里仅定义了 OLED 2线I2C模式驱动的引脚 采用软件模拟I2C，任意选择两个引脚即可驱动OLED */
 #define OLED_I2C_SCL_CLK()      __HAL_RCC_GPIOB_CLK_ENABLE();
 #define OLED_I2C_SCL_PORT       GPIOB
